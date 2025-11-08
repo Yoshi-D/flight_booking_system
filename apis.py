@@ -66,7 +66,7 @@ async def get_flight_details(from_date, to_date, source_airport, destination_air
     cursor = conn.cursor()
 
     query = """
-                select * from routes natural join flight_schedule
+                select * from routes natural join flight_schedule 
                 where flight_schedule.schedule_date between %s and %s and routes.start_ap = %s and routes.dest_ap = %s
             """
     cursor.execute(query, (
@@ -79,15 +79,15 @@ async def get_flight_details(from_date, to_date, source_airport, destination_air
 
     flights_data = []
     if len(rows)>0:
-        flight = {}
         for row in rows:
+            flight = {}
             flight["route_id"] = row[0]
             flight["start_ap"] = row[1]
             flight["dest_ap"] = row[2]
             flight["distance"] = row[3]
             flight["schedule_id"] = row[4]
             flight["flight_id"] = row[5]
-            flight["schedule_data"] = row[6]
+            flight["schedule_date"] = row[6]
             flight["dep_time"] = row[7]
             flight["arrival_time"] = row[8]
             flights_data.append(flight)
