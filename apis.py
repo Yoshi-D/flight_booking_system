@@ -10,8 +10,7 @@ app = FastAPI()
 # get all tickets (with destination and source airports) for a certain passenger
 
 #next steps
-#display available seats for a particular schedule_id flight
-#cancel ticket, update ticket (seat wise) ,get ticket by pnr
+#cancel ticket,get ticket by pnr
 
 @app.get("/show_tables")
 def show_db_tables():
@@ -24,7 +23,6 @@ def show_db_tables():
     cursor.close()
     conn.close()
     return rows
-
 
 @app.post("/insert_into_passenger")
 async def insert_into_passenger_table(request: Request):
@@ -199,3 +197,68 @@ async def check_user_exists(passenger_id):
 
     return passenger_data
 
+
+@app.get("/get_available_seats")
+async def get_available_seats(schedule_id): #assumes that airplane only has seats from 1A,1B,1C,1D,1E,1F to 30A,30B...
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    query = """
+                select ticket.seat_number from ticket where schedule_id = %s
+            """
+    cursor.execute(query, (schedule_id,))
+
+    rows = cursor.fetchall()
+    cursor.close()
+    conn.close()
+
+    available_seats = {}
+    for i in range(1,31):
+        for char in "ABCDEF":
+            available_seats[str(i)+char] = True
+
+    for seat in rows:
+        available_seats[seat[0]] = False
+
+    return available_seats
+
+@app.post("/update_ticket") #before updating ticket, available seats should be displayed for a choice to the user
+async def update_ticket_by_pnr(request: Request): #this updates the seat number on a ticket on the basis of pnr and if same passenger_id is updating
+    data = await request.json()
+    passenger_id = data.get("passenger_id")
+    pnr = data.get("pnr")
+    new_seat_number = data.get("new_seat_number")
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    query = """
+            select ticket.pnr, booker_id, ticket_id 
+            from booking join ticket on booking.pnr = ticket.pnr where ticket.pnr = %s;
+            """
+
+    cursor.execute(query, (pnr,))
+    row = cursor.fetchone()
+
+    if row:
+        if passenger_id != row[1]:
+            cursor.close()
+            conn.close()
+            return {"error":"This PNR is not assigned to this passenger"}
+        else:
+            query = """
+                    update ticket set seat_number = %s where pnr = %s
+                    """
+            cursor.execute(query,(new_seat_number, pnr))
+            conn.commit()
+            cursor.close()
+            conn.close()
+            return {"message":"Success!"}
+
+    cursor.close()
+    conn.close()
+    return {"error":"No such pnr found"}
+
+
+@app.get("get_ticket_by_pnr")
+async def get_ticket_by_pnr(passenger_id,pnr)
