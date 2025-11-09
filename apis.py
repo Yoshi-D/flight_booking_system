@@ -10,7 +10,7 @@ app = FastAPI()
 # get all tickets (with destination and source airports) for a certain passenger
 
 #next steps
-#cancel ticket,get ticket by pnr
+#cancel ticket
 
 @app.get("/show_tables")
 def show_db_tables():
@@ -260,5 +260,28 @@ async def update_ticket_by_pnr(request: Request): #this updates the seat number 
     return {"error":"No such pnr found"}
 
 
-@app.get("get_ticket_by_pnr")
-async def get_ticket_by_pnr(passenger_id,pnr)
+@app.get("/get_ticket_by_pnr")
+async def get_ticket_by_pnr(passenger_id,pnr):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    query = """
+                select booking.pnr,status_code, booking_timestamp, schedule_id, class_code, price, seat_number
+                 from booking join ticket on booking.pnr = ticket.pnr where ticket.pnr = %s and booking.booker_id=%s;
+                """
+    cursor.execute(query, (pnr,passenger_id))
+
+    row = cursor.fetchone()
+    cursor.close()
+    conn.close()
+
+    ticket_data = {}
+    if row:
+        ticket_data["pnr"] = row[0]
+        ticket_data["status_code"] = row[1]
+        ticket_data["booking_timestamp"] = row[2]
+        ticket_data["schedule_id"] = row[3]
+        ticket_data["class_code"] = row[4]
+        ticket_data["price"] = row[5]
+        ticket_data["seat_number"] = row[6]
+    return ticket_data
