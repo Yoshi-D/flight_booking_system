@@ -3,14 +3,6 @@ from generate_ids import *
 from db import *
 
 app = FastAPI()
-#made functionality to
-# insert new passenger,
-# get specific flight details ,
-# generate and insert a new ticket for a particular passenger,
-# get all tickets (with destination and source airports) for a certain passenger
-
-#next steps
-#cancel ticket
 
 @app.get("/show_tables")
 def show_db_tables():
@@ -285,3 +277,29 @@ async def get_ticket_by_pnr(passenger_id,pnr):
         ticket_data["price"] = row[5]
         ticket_data["seat_number"] = row[6]
     return ticket_data
+
+@app.post("/cancel_ticket")
+async def cancel_ticket(request: Request):
+
+    data = await request.json()
+    passenger_id = data.get("passenger_id")
+    pnr = data.get("pnr")
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    query = """
+                delete from ticket where pnr = %s and passenger_id = %s;
+            """
+    cursor.execute(query, (pnr, passenger_id))
+
+    query ="""
+                delete from booking where pnr = %s and booker_id = %s;
+            """
+    cursor.execute(query, (pnr, passenger_id))
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    return {"message":"Success"}
+
+
