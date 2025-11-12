@@ -4,6 +4,8 @@ from db import *
 
 app = FastAPI()
 
+#need to add functionality to allow group booking, passwords, autocomplete search
+#
 @app.get("/show_tables")
 def show_db_tables():
     conn = get_connection()
@@ -16,7 +18,7 @@ def show_db_tables():
     conn.close()
     return rows
 
-@app.post("/insert_into_passenger")
+@app.post("/insert_into_passenger") #need to add password here
 async def insert_into_passenger_table(request: Request):
 
     data = await request.json()
@@ -303,3 +305,45 @@ async def cancel_ticket(request: Request):
     return {"message":"Success"}
 
 
+@app.get("/autocomplete_suggestions")
+async def autocomplete(term):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    query = f"""
+            select apt_code, name, country from airport where apt_code like '%{term}%' or name like '%{term}%' or country like '%{term}%';
+            """
+    cursor.execute(query)
+
+    rows= cursor.fetchall()
+    cursor.close()
+    conn.close()
+
+    airport_data = []
+    if rows:
+        for row in rows:
+            data = {}
+            data["apt_code"] = row[0]
+            data["airport_name"] = row[1]
+            data["country"] = row[2]
+            airport_data.append(data)
+
+    return airport_data
+
+@app.get("/check_password") #need to check this properly
+async def check_password(request:Request):
+    data = await request.json()
+    passenger_id = data["passenger_id"]
+    password = data["password"]
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    query = f"""
+                
+                """
+    cursor.execute(query)
+
+    rows = cursor.fetchall()
+    cursor.close()
+    conn.close()
