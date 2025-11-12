@@ -31,6 +31,7 @@ async def insert_into_passenger_table(request: Request):
     gender = data.get("gender")
     nationality = data.get("nationality")
     email = data.get("email")
+    password = data.get("password")
 
     conn = get_connection()
     cursor = conn.cursor()
@@ -44,6 +45,12 @@ async def insert_into_passenger_table(request: Request):
         passenger_id, gov_id_type, doc_id_number, name,
         dob, gender, nationality, email
     ))
+
+    query = """
+            INSERT INTO passenger_login
+            VALUES (%s, %s)
+        """
+    cursor.execute(query, (passenger_id, password))
 
     conn.commit()
     cursor.close()
@@ -164,14 +171,20 @@ async def get_passenger_ticket(passenger_id):
 
     return ticket_data
 
-@app.get("/check_user_exists")
-async def check_user_exists(passenger_id):
+@app.get("/check_user_exists") #checks if user exists and if password is same
+async def check_user_exists(request:Request):
+    data = await request.json()
+
+    passenger_id = data["passenger_id"]
+    password = data["password"]
 
     conn = get_connection()
     cursor = conn.cursor()
 
     query = """
-                    select * from passenger where passenger_id = %s
+                    select * from passenger join passenger_login 
+                    on passenger.passenger_id = passenger_login.passenger_id 
+                    and passenger.passenger_id = %s;
             """
     cursor.execute(query, (passenger_id,))
 
@@ -180,16 +193,21 @@ async def check_user_exists(passenger_id):
     conn.close()
     passenger_data = {}
     if row:
-        passenger_data["passenger_id"] = row[0]
-        passenger_data["gov_id_type"] = row[1]
-        passenger_data["phone_number"] = row[2]
-        passenger_data["name"] = row[3]
-        passenger_data["dob"] = row[4]
-        passenger_data["gender"] = row[5]
-        passenger_data["nationality"] = row[6]
-        passenger_data["email_address"] = row[7]
+        if row[9] == password:
+            passenger_data["passenger_id"] = row[0]
+            passenger_data["gov_id_type"] = row[1]
+            passenger_data["phone_number"] = row[2]
+            passenger_data["name"] = row[3]
+            passenger_data["dob"] = row[4]
+            passenger_data["gender"] = row[5]
+            passenger_data["nationality"] = row[6]
+            passenger_data["email_address"] = row[7]
+            return passenger_data
+        else:
+            return {"message":"incorrect password"}
+    else:
+        return {"message":"no such user exists"}
 
-    return passenger_data
 
 
 @app.get("/get_available_seats")
@@ -329,21 +347,3 @@ async def autocomplete(term):
             airport_data.append(data)
 
     return airport_data
-
-@app.get("/check_password") #need to check this properly
-async def check_password(request:Request):
-    data = await request.json()
-    passenger_id = data["passenger_id"]
-    password = data["password"]
-
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    query = f"""
-                
-                """
-    cursor.execute(query)
-
-    rows = cursor.fetchall()
-    cursor.close()
-    conn.close()
